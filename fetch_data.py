@@ -1,13 +1,13 @@
 from googleapiclient.discovery import build
 import pandas as pd
 import time
+import cred
 
-"""Hide this Keyyy"""
-my_key = "AIzaSyDyuONNMZ8I398XAyTpimNFLhSbgHoJQ40" # this isnt supposed to be all wide open 
+
 MAX_RESULTS = 500 
 
 # creating an youtube object with my API key
-yt = build("youtube", "v3", developerKey=my_key)
+yt = build("youtube", "v3", developerKey=cred.my_key)
 
 query = "Football Highlights"
 
