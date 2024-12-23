@@ -3,19 +3,50 @@ import pandas as pd
 import time
 import cred
 
+'''
+Quota Excedded - test caption functionality 
+'''
 
 MAX_RESULTS = 500 
 
 # creating an youtube object with my API key
 yt = build("youtube", "v3", developerKey=cred.my_key)
 
-query = "Football Highlights"
+
+# if captoions are available then fetch else, say N/A
+def get_captions(video_id):
+    try:
+        caption_request = yt.captions().list(
+            part="snippet",
+            videoId = video_id
+        )
+        caption_response = caption_request.execute()
+
+        if "items" in caption_response and caption_response["items"]:
+            # get caption id
+            caption_id = caption_response["items"][0]["id"] # whatever the first caption maybe, extract its id
+
+            # download captions
+            get_caption_request = yt.captions().download(
+                id=caption_id,
+                tfmt="srt" # Format SRT (SubRip Subtitle)
+            ) 
+
+            actual_caption = get_caption_request.execute()
+            return actual_caption
+        else:
+            return "N/A" # no captions
+
+
+    except Exception as e:
+        print(f"Exception caused during caption fetching for video id: {video_id}")
+        return "N/A"
+
 
 def get_video_data(video_ids):
-    '''
-    i didnt had any idea about this earlier, 
-    snippet: title, description, channel name
-    statistic: view count
+    ''' 
+    snippet: title, description, channel name...
+    statistic: view count...
     contentDetails: video duration and format? 
     '''
     video_request = yt.videos().list( # fetching video data from this API endpoint
@@ -27,6 +58,7 @@ def get_video_data(video_ids):
 
     video_data = []
     for video in video_response["items"]:
+        captions = get_captions(video["id"])
         video_data.append({
             "Video Title": video["snippet"]["title"],
             "Video Link": "https://youtube.com/watch?v="+video['id'],
@@ -35,11 +67,15 @@ def get_video_data(video_ids):
             "Channel Title": video["snippet"]["channelTitle"],
             "Tag": video["snippet"].get("tags", []),
             "Duration": video["contentDetails"].get("duration", "N/A"), # duration format PT#H#M#S
+            "Comment Count": video["statistics"].get("commentCount", "N/A"),
+            "Publish Date": video["snippet"]["publishedAt"],
+            "Captions":  captions,
         })
 
 
 
     return video_data
+
 
 def fetch_query_data(query):
     all_videos = [] # to store all the videos
@@ -50,7 +86,7 @@ def fetch_query_data(query):
             part = "snippet",
             type="video",
             q=query,
-            maxResults = 50,
+            maxResults = 100, # we can adjust this
             pageToken = next_page_token # handle pagination for results exceeding maxResults (50).
         )
 
@@ -75,6 +111,7 @@ def fetch_query_data(query):
 
 
         # set next page token as we want data till MAX_RESULTS
+        # basically this implements pagination
         next_page_token = search_response.get("nextPageToken")
         if not next_page_token:
             break
@@ -85,11 +122,11 @@ def fetch_query_data(query):
 
 
 def main():
-
+    query = input("Enter Genre: ") # genre or any other search like "top BGT moments" anything 
     
     video_data = fetch_query_data(query)
     df = pd.DataFrame(video_data)
-    csv_file = f"{query}_top_500_videos.csv"
+    csv_file = f"data/{query}_top_500_videos.csv"
     df.to_csv(csv_file, index=False)
     print(f"Data saved to {csv_file}")
 
